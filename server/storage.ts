@@ -35,7 +35,7 @@ export class MemStorage implements IStorage {
       id: 1,
       aiModelStatus: "connected",
       shellAccess: "active",
-      safetyMode: true,
+      safetyMode: false,
       workingDirectory: "/home/runner/workspace",
       updatedAt: new Date()
     };

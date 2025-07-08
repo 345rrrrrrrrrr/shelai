@@ -55,8 +55,10 @@ export default function Terminal() {
 
     setIsProcessing(true);
     
-    // Determine if it's an AI command (contains natural language)
-    const isAiCommand = !/^[a-zA-Z0-9\s\-\.\/\\]+$/.test(input.trim());
+    // Determine if it's an AI command (natural language vs direct shell command)
+    const directShellCommands = ['ls', 'pwd', 'cat', 'echo', 'mkdir', 'touch', 'rm', 'cp', 'mv', 'grep', 'find', 'head', 'tail', 'git', 'npm', 'node', 'python'];
+    const firstWord = input.trim().split(' ')[0].toLowerCase();
+    const isAiCommand = !directShellCommands.includes(firstWord);
     
     executeCommand.mutate({
       input: input.trim(),

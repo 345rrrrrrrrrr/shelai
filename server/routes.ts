@@ -25,8 +25,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Process through AI first
         const analysis = await analyzeCommand(input);
         
-        if (analysis.isShellCommand && analysis.safetyLevel !== "dangerous") {
-          // Execute the shell command
+        if (analysis.isShellCommand) {
+          // Execute the shell command (no safety restrictions)
           const result = await executeShellCommand(analysis.command);
           output = result.stdout || result.stderr;
           status = result.exitCode === 0 ? "completed" : "error";
