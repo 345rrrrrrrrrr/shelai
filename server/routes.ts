@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { analyzeCommand, generateCode, processNaturalLanguageRequest } from "./services/gemini";
+import { analyzeCommand, generateCode, processNaturalLanguageRequest, setupEnvironment } from "./services/gemini";
 import { executeShellCommand, downloadFile, getCurrentDirectory, changeDirectory } from "./services/shell";
 import { listDirectory, readFile, writeFile, deleteFile, createDirectory, getFileLanguage } from "./services/fileManager";
 import { insertCommandSchema, insertFileSchema, updateFileSchema } from "@shared/schema";
@@ -40,9 +40,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 !invalidCommands.includes(analysis.command.trim().toLowerCase());
 
               if (isValidCommand) {
+                // Set up environment first (create directories, files, etc.)
+                const setupResults = await setupEnvironment(analysis);
+                
                 // Execute the AI-generated shell command (no safety restrictions)
                 const result = await executeShellCommand(analysis.command);
-                output = result.stdout || result.stderr || "Command completed";
+                
+                // Combine setup and execution results
+                const outputParts = [];
+                if (setupResults.length > 0) {
+                  outputParts.push(`Environment Setup:\n${setupResults.join('\n')}\n`);
+                }
+                outputParts.push(`Command Execution:\n${result.stdout || result.stderr || "Command completed"}`);
+                
+                output = outputParts.join('\n');
                 status = result.exitCode === 0 ? "completed" : "error";
               } else {
                 // For purely conversational input, use natural language processing

@@ -10,13 +10,22 @@ export interface CommandAnalysis {
   description: string;
   safetyLevel: "safe" | "warning" | "dangerous";
   suggestions: string[];
+  setupCommands?: string[];
+  requiredFiles?: string[];
+  requiredDirectories?: string[];
 }
 
 export async function analyzeCommand(input: string): Promise<CommandAnalysis> {
   try {
-    const systemPrompt = `You are a shell command analyzer. For ANY actionable request, generate the appropriate shell command.
+    const systemPrompt = `You are a shell command analyzer with environment setup capabilities. For ANY actionable request, analyze what needs to be set up BEFORE executing the main command.
 
-IMPORTANT: Always generate executable shell commands for actionable requests like:
+IMPORTANT: Always analyze the full workflow:
+1. What directories need to exist?
+2. What files need to be created first?
+3. What setup commands should run before the main command?
+4. What is the final command to execute?
+
+For actionable requests like:
 - File operations (create, delete, move, copy)
 - Directory operations (make, list, navigate)
 - System information queries
@@ -26,13 +35,20 @@ IMPORTANT: Always generate executable shell commands for actionable requests lik
 
 For conversational greetings or questions, set command to "N/A".
 
+EXAMPLES:
+- "scan networks" → setupCommands: ["mkdir -p data_output", "touch network_scan.txt"], requiredDirectories: ["data_output"], requiredFiles: ["network_scan.txt"]
+- "create report" → setupCommands: ["mkdir -p reports", "touch reports/template.txt"], requiredDirectories: ["reports"], requiredFiles: ["reports/template.txt"]
+
 Respond with JSON in this format:
 {
   "isShellCommand": boolean,
   "command": "string",
   "description": "string", 
   "safetyLevel": "safe" | "warning" | "dangerous",
-  "suggestions": ["string"]
+  "suggestions": ["string"],
+  "setupCommands": ["string"] (optional - commands to run before main command),
+  "requiredFiles": ["string"] (optional - files that need to exist),
+  "requiredDirectories": ["string"] (optional - directories that need to exist)
 }`;
 
     const response = await ai.models.generateContent({
@@ -47,7 +63,10 @@ Respond with JSON in this format:
             command: { type: "string" },
             description: { type: "string" },
             safetyLevel: { type: "string", enum: ["safe", "warning", "dangerous"] },
-            suggestions: { type: "array", items: { type: "string" } }
+            suggestions: { type: "array", items: { type: "string" } },
+            setupCommands: { type: "array", items: { type: "string" } },
+            requiredFiles: { type: "array", items: { type: "string" } },
+            requiredDirectories: { type: "array", items: { type: "string" } }
           },
           required: ["isShellCommand", "command", "description", "safetyLevel", "suggestions"]
         }
@@ -88,6 +107,44 @@ Provide clean, well-commented code that follows best practices. Only return the 
   } catch (error) {
     console.error("Error generating code:", error);
     return "// Error generating code";
+  }
+}
+
+export async function setupEnvironment(analysis: CommandAnalysis): Promise<string[]> {
+  const setupResults: string[] = [];
+  
+  try {
+    // Create required directories
+    if (analysis.requiredDirectories) {
+      for (const dir of analysis.requiredDirectories) {
+        const { executeShellCommand } = await import('./shell');
+        const result = await executeShellCommand(`mkdir -p "${dir}"`);
+        setupResults.push(`Directory created: ${dir} (${result.exitCode === 0 ? 'success' : 'failed'})`);
+      }
+    }
+    
+    // Create required files
+    if (analysis.requiredFiles) {
+      for (const file of analysis.requiredFiles) {
+        const { executeShellCommand } = await import('./shell');
+        const result = await executeShellCommand(`touch "${file}"`);
+        setupResults.push(`File created: ${file} (${result.exitCode === 0 ? 'success' : 'failed'})`);
+      }
+    }
+    
+    // Run setup commands
+    if (analysis.setupCommands) {
+      for (const setupCmd of analysis.setupCommands) {
+        const { executeShellCommand } = await import('./shell');
+        const result = await executeShellCommand(setupCmd);
+        setupResults.push(`Setup command: ${setupCmd} (${result.exitCode === 0 ? 'success' : 'failed'})`);
+      }
+    }
+    
+    return setupResults;
+  } catch (error) {
+    setupResults.push(`Setup error: ${error}`);
+    return setupResults;
   }
 }
 
