@@ -14,18 +14,23 @@ export interface CommandAnalysis {
 
 export async function analyzeCommand(input: string): Promise<CommandAnalysis> {
   try {
-    const systemPrompt = `You are a shell command analyzer. Analyze the user input and determine:
-1. If it's a shell command or natural language request
-2. The actual command to execute (if applicable)
-3. A description of what it does
-4. Safety level (safe, warning, dangerous)
-5. Suggestions for improvement or alternatives
+    const systemPrompt = `You are a shell command analyzer. For ANY actionable request, generate the appropriate shell command.
+
+IMPORTANT: Always generate executable shell commands for actionable requests like:
+- File operations (create, delete, move, copy)
+- Directory operations (make, list, navigate)
+- System information queries
+- Network operations
+- Data processing tasks
+- Any task that can be accomplished via shell
+
+For conversational greetings or questions, set command to "N/A".
 
 Respond with JSON in this format:
 {
   "isShellCommand": boolean,
   "command": "string",
-  "description": "string",
+  "description": "string", 
   "safetyLevel": "safe" | "warning" | "dangerous",
   "suggestions": ["string"]
 }`;

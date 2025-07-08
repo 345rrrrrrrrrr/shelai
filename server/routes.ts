@@ -37,7 +37,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           output = result.stdout || result.stderr || "Command completed";
           status = result.exitCode === 0 ? "completed" : "error";
         } else {
-          // Process as natural language request
+          // For purely conversational input, use natural language processing
           output = await processNaturalLanguageRequest(input);
         }
       } else {
