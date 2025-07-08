@@ -25,10 +25,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Process through AI first
         const analysis = await analyzeCommand(input);
         
-        if (analysis.isShellCommand) {
-          // Execute the shell command (no safety restrictions)
+        if (analysis.command && analysis.command.trim() !== "") {
+          // Execute the AI-generated shell command (no safety restrictions)
           const result = await executeShellCommand(analysis.command);
-          output = result.stdout || result.stderr;
+          output = result.stdout || result.stderr || "Command completed";
           status = result.exitCode === 0 ? "completed" : "error";
         } else {
           // Process as natural language request
