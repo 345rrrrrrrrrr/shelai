@@ -5,9 +5,10 @@ import { analyzeCommand, generateCode, processNaturalLanguageRequest } from "./s
 import { executeShellCommand, downloadFile, getCurrentDirectory, changeDirectory } from "./services/shell";
 import { listDirectory, readFile, writeFile, deleteFile, createDirectory, getFileLanguage } from "./services/fileManager";
 import { insertCommandSchema, insertFileSchema, updateFileSchema } from "@shared/schema";
+import { commandQueue } from "./services/commandQueue";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Command execution endpoint
+  // Command execution endpoint with concurrent processing
   app.post("/api/commands", async (req, res) => {
     try {
       const { input, isAiCommand } = insertCommandSchema.parse(req.body);
@@ -18,44 +19,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: "running"
       });
 
-      let output = "";
-      let status = "completed";
+      // Return command immediately and process asynchronously
+      res.json(command);
 
-      if (isAiCommand) {
-        // Process through AI first
-        const analysis = await analyzeCommand(input);
-        
-        // Check if the command is valid before executing
-        const invalidCommands = ['N/A', 'n/a', 'null', 'undefined', 'none', 'no command', 'not applicable'];
-        const isValidCommand = analysis.command && 
-          analysis.command.trim() !== "" && 
-          !invalidCommands.includes(analysis.command.trim().toLowerCase());
+      // Process command asynchronously with queue management
+      setImmediate(async () => {
+        await commandQueue.execute(command.id, async () => {
+          try {
+            let output = "";
+            let status = "completed";
 
-        if (isValidCommand) {
-          // Execute the AI-generated shell command (no safety restrictions)
-          const result = await executeShellCommand(analysis.command);
-          output = result.stdout || result.stderr || "Command completed";
-          status = result.exitCode === 0 ? "completed" : "error";
-        } else {
-          // For purely conversational input, use natural language processing
-          output = await processNaturalLanguageRequest(input);
-        }
-      } else {
-        // Direct shell command execution
-        const result = await executeShellCommand(input);
-        output = result.stdout || result.stderr;
-        status = result.exitCode === 0 ? "completed" : "error";
-      }
+            if (isAiCommand) {
+              // Process through AI first
+              const analysis = await analyzeCommand(input);
+              
+              // Check if the command is valid before executing
+              const invalidCommands = ['N/A', 'n/a', 'null', 'undefined', 'none', 'no command', 'not applicable'];
+              const isValidCommand = analysis.command && 
+                analysis.command.trim() !== "" && 
+                !invalidCommands.includes(analysis.command.trim().toLowerCase());
 
-      const updatedCommand = await storage.updateCommand(command.id, {
-        output,
-        status
+              if (isValidCommand) {
+                // Execute the AI-generated shell command (no safety restrictions)
+                const result = await executeShellCommand(analysis.command);
+                output = result.stdout || result.stderr || "Command completed";
+                status = result.exitCode === 0 ? "completed" : "error";
+              } else {
+                // For purely conversational input, use natural language processing
+                output = await processNaturalLanguageRequest(input);
+              }
+            } else {
+              // Direct shell command execution
+              const result = await executeShellCommand(input);
+              output = result.stdout || result.stderr;
+              status = result.exitCode === 0 ? "completed" : "error";
+            }
+
+            // Update command status after completion
+            await storage.updateCommand(command.id, {
+              output,
+              status
+            });
+          } catch (error) {
+            console.error("Error executing command asynchronously:", error);
+            await storage.updateCommand(command.id, {
+              output: `Error: ${(error as Error).message || 'Unknown error'}`,
+              status: "error"
+            });
+          }
+        });
       });
-
-      res.json(updatedCommand);
     } catch (error) {
-      console.error("Error executing command:", error);
-      res.status(500).json({ message: "Failed to execute command" });
+      console.error("Error creating command:", error);
+      res.status(500).json({ message: "Failed to create command" });
     }
   });
 
@@ -180,11 +196,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // System status endpoint
+  // System status endpoint with concurrent command info
   app.get("/api/system-status", async (req, res) => {
     try {
       const status = await storage.getSystemStatus();
-      res.json(status);
+      const concurrentInfo = {
+        runningCommands: commandQueue.getRunningCount(),
+        runningCommandIds: commandQueue.getRunningCommands()
+      };
+      res.json({ ...status, concurrent: concurrentInfo });
     } catch (error) {
       console.error("Error fetching system status:", error);
       res.status(500).json({ message: "Failed to fetch system status" });
