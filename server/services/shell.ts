@@ -26,7 +26,12 @@ const DANGEROUS_COMMANDS = [
 const ALLOWED_COMMANDS = [
   "ls", "cat", "pwd", "echo", "grep", "find", "head", "tail", "sort", "wc",
   "touch", "mkdir", "cp", "mv", "rm", "chmod", "chown", "git", "npm", "node",
-  "python", "python3", "pip", "curl", "wget", "tar", "gzip", "gunzip", "zip", "unzip"
+  "python", "python3", "pip", "curl", "wget", "tar", "gzip", "gunzip", "zip", "unzip",
+  "which", "whoami", "uname", "df", "du", "free", "ps", "top", "htop", "kill",
+  "tree", "file", "stat", "dirname", "basename", "realpath", "readlink",
+  "vim", "nano", "emacs", "less", "more", "diff", "patch", "awk", "sed",
+  "make", "gcc", "g++", "clang", "rustc", "go", "java", "javac", "dotnet",
+  "php", "ruby", "perl", "lua", "tsc", "deno", "bun", "yarn", "pnpm"
 ];
 
 export function isCommandSafe(command: string): boolean {
@@ -41,8 +46,6 @@ export function isCommandSafe(command: string): boolean {
   const dangerousPatterns = [
     /rm\s+.*-rf/,
     /chmod\s+.*777/,
-    />/,  // Redirect that might overwrite important files
-    /\|/,  // Pipes that might be used maliciously
     /sudo/,
     /su\s/,
     /passwd/,
@@ -63,7 +66,7 @@ export function isCommandSafe(command: string): boolean {
   return ALLOWED_COMMANDS.includes(firstWord);
 }
 
-export async function executeShellCommand(command: string, workingDir: string = process.cwd()): Promise<ShellResult> {
+export async function executeShellCommand(command: string, workingDir: string = "/home/runner/workspace"): Promise<ShellResult> {
   if (!isCommandSafe(command)) {
     return {
       stdout: "",
@@ -109,6 +112,10 @@ export async function downloadFile(url: string, destination: string): Promise<Sh
 
 export function getCurrentDirectory(): string {
   return process.cwd();
+}
+
+export function getWorkspaceDirectory(): string {
+  return "/home/runner/workspace";
 }
 
 export function changeDirectory(newDir: string): boolean {

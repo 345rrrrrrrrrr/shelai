@@ -196,6 +196,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test shell connection endpoint
+  app.get("/api/test-shell", async (req, res) => {
+    try {
+      const testCommands = [
+        "pwd",
+        "whoami", 
+        "echo 'AI Shell Test: Connected to Replit'",
+        "ls -la",
+        "uname -a"
+      ];
+      
+      const results = [];
+      for (const cmd of testCommands) {
+        const result = await executeShellCommand(cmd);
+        results.push({
+          command: cmd,
+          output: result.stdout || result.stderr,
+          exitCode: result.exitCode
+        });
+      }
+      
+      res.json({ 
+        message: "Shell connection test completed",
+        environment: "Replit",
+        results 
+      });
+    } catch (error) {
+      console.error("Error testing shell:", error);
+      res.status(500).json({ message: "Failed to test shell connection" });
+    }
+  });
+
   app.post("/api/working-directory", async (req, res) => {
     try {
       const { path } = req.body;
