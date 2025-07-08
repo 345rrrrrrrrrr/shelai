@@ -10,70 +10,13 @@ export interface ShellResult {
   exitCode: number;
 }
 
-const DANGEROUS_COMMANDS = [
-  "rm -rf /",
-  ":(){ :|:& };:",
-  "chmod -R 777 /",
-  "dd if=/dev/zero of=/dev/sda",
-  "mkfs",
-  "fdisk",
-  "shutdown",
-  "reboot",
-  "halt",
-  "poweroff"
-];
-
-const ALLOWED_COMMANDS = [
-  "ls", "cat", "pwd", "echo", "grep", "find", "head", "tail", "sort", "wc",
-  "touch", "mkdir", "cp", "mv", "rm", "chmod", "chown", "git", "npm", "node",
-  "python", "python3", "pip", "curl", "wget", "tar", "gzip", "gunzip", "zip", "unzip",
-  "which", "whoami", "uname", "df", "du", "free", "ps", "top", "htop", "kill",
-  "tree", "file", "stat", "dirname", "basename", "realpath", "readlink",
-  "vim", "nano", "emacs", "less", "more", "diff", "patch", "awk", "sed",
-  "make", "gcc", "g++", "clang", "rustc", "go", "java", "javac", "dotnet",
-  "php", "ruby", "perl", "lua", "tsc", "deno", "bun", "yarn", "pnpm"
-];
-
 export function isCommandSafe(command: string): boolean {
-  // Check for dangerous commands
-  for (const dangerous of DANGEROUS_COMMANDS) {
-    if (command.includes(dangerous)) {
-      return false;
-    }
-  }
-
-  // Check for potentially dangerous patterns
-  const dangerousPatterns = [
-    /rm\s+.*-rf/,
-    /chmod\s+.*777/,
-    /sudo/,
-    /su\s/,
-    /passwd/,
-    /useradd/,
-    /userdel/,
-    /systemctl/,
-    /service/
-  ];
-
-  for (const pattern of dangerousPatterns) {
-    if (pattern.test(command)) {
-      return false;
-    }
-  }
-
-  // Check if command starts with an allowed command
-  const firstWord = command.split(" ")[0];
-  return ALLOWED_COMMANDS.includes(firstWord);
+  // All commands are now allowed - no restrictions
+  return true;
 }
 
 export async function executeShellCommand(command: string, workingDir: string = "/home/runner/workspace"): Promise<ShellResult> {
-  if (!isCommandSafe(command)) {
-    return {
-      stdout: "",
-      stderr: "Command blocked for security reasons",
-      exitCode: 1
-    };
-  }
+  // Security restrictions removed - all commands allowed
 
   try {
     const { stdout, stderr } = await execAsync(command, {
@@ -98,15 +41,6 @@ export async function executeShellCommand(command: string, workingDir: string = 
 
 export async function downloadFile(url: string, destination: string): Promise<ShellResult> {
   const command = `curl -L "${url}" -o "${destination}"`;
-  
-  if (!isCommandSafe(command)) {
-    return {
-      stdout: "",
-      stderr: "Download command blocked for security reasons",
-      exitCode: 1
-    };
-  }
-
   return executeShellCommand(command);
 }
 
