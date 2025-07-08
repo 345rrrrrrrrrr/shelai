@@ -1,0 +1,12 @@
+DATA COLLECTION SUMMARY
+==================================================
+
+Timestamp: 2025-07-08T09:48:19.992394
+API Source: JSONPlaceholder
+Total Posts: 100
+Total Users: 10
+Total Comments: 500
+Total Todos: 200
+
+Data stored in: collected_data.json
+File size: 226548 bytes
