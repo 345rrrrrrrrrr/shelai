@@ -25,7 +25,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Process through AI first
         const analysis = await analyzeCommand(input);
         
-        if (analysis.command && analysis.command.trim() !== "") {
+        // Check if the command is valid before executing
+        const invalidCommands = ['N/A', 'n/a', 'null', 'undefined', 'none', 'no command', 'not applicable'];
+        const isValidCommand = analysis.command && 
+          analysis.command.trim() !== "" && 
+          !invalidCommands.includes(analysis.command.trim().toLowerCase());
+
+        if (isValidCommand) {
           // Execute the AI-generated shell command (no safety restrictions)
           const result = await executeShellCommand(analysis.command);
           output = result.stdout || result.stderr || "Command completed";
